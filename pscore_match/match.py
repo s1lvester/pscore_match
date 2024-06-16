@@ -9,12 +9,10 @@ Austin, P. C. (2014), A comparison of 12 algorithms for matching on the
 propensity score. Statistic. Med., 33: 1057-1069.
 """
 
-from __future__ import division
+from typing import Union, List
 import numpy as np
-import scipy
-from scipy.stats import binom, hypergeom, gaussian_kde, ttest_ind, ranksums
+from scipy.stats import ttest_ind, ranksums
 import pandas as pd
-import matplotlib.pyplot as plt
 import plotly
 import plotly.graph_objs as go
 
@@ -67,17 +65,17 @@ class Match(object):
         Propensity and groups should be in the same order (matching indices)
     """
 
-    def __init__(self, groups, propensity):
+    def __init__(self, groups: np.ndarray, propensity: np.ndarray) -> None:
         self.groups = pd.Series(groups)
         self.propensity = pd.Series(propensity)
         assert self.groups.shape==self.propensity.shape, "Input dimensions dont match"
         assert all(self.propensity >=0) and all(self.propensity <=1), "Propensity scores must be between 0 and 1"
         assert len(np.unique(self.groups)==2), "Wrong number of groups"
-        self.nobs = self.groups.shape[0]
-        self.ntreat = np.sum(self.groups == 1)
-        self.ncontrol = np.sum(self.groups == 0)
+        self.nobs = self.groups.shape[0]          # n_observations
+        self.ntreat = np.sum(self.groups == 1)    # n_treated
+        self.ncontrol = np.sum(self.groups == 0)  # n_control
 
-    def create(self, method='one-to-one', **kwargs):
+    def create(self, method: str ='one-to-one', **kwargs: dict) -> None:
         """
         Parameters
         ----------
@@ -107,7 +105,7 @@ class Match(object):
         else:
             raise ValueError('Invalid matching method')
 
-    def _match_one(self, caliper_scale=None, caliper=0.05, replace=False):
+    def _match_one(self, caliper_scale: bool = None, caliper: float = 0.05, replace: bool = False) -> None:
         """
         Implements greedy one-to-one matching on propensity scores.
 
@@ -146,7 +144,9 @@ class Match(object):
             self.freq[mv[i]] += 1
             self.weights[mv[i]] += 1
 
-    def _match_many(self, many_method="knn", k=1, caliper=0.05, caliper_scale="propensity", replace=True):
+    def _match_many(self, many_method: str = "knn", k: int = 1,
+                    caliper: float = 0.05, caliper_scale: str = "propensity",
+                    replace: bool = True):
         """
         Implements greedy one-to-many matching on propensity scores.
 
@@ -200,7 +200,7 @@ class Match(object):
             self.freq[mv[i]] += 1
             self.weights[mv[i]] += 1/len(mv[i])
 
-    def _match_info(self):
+    def _match_info(self) -> None:
         """
         Helper function to create match info
         """
@@ -211,10 +211,13 @@ class Match(object):
             'control' : np.unique(list(self.matches.values()))
         }
         self.matches['dropped'] = np.setdiff1d(list(range(self.nobs)),
-                                    np.append(self.matches['treated'], self.matches['control']))
+                                  np.append(self.matches['treated'], self.matches['control']))
 
-    def plot_balance(self, covariates, test=['t', 'rank'], notebook=False, filename='balance-plot',
-                     **kwargs):
+    def plot_balance(self, covariates: pd.DataFrame,
+                     test: List[str] = ['t', 'rank'],
+                     notebook: bool = False,
+                     filename: Union[str, None] = None,
+                     **kwargs: dict) -> None:
         """
         Plot the p-values for covariate balance before and after matching
 
@@ -368,7 +371,7 @@ class Match(object):
 ############################ helper funcs  #####################################
 ################################################################################
 
-def whichMatched(matches, data, show_duplicates = True):
+def whichMatched(matches: Match, data: pd.DataFrame, show_duplicates: bool = True) -> pd.DataFrame:
     """
     Simple function to convert output of Matches to DataFrame of all matched observations
 
@@ -406,7 +409,7 @@ def whichMatched(matches, data, show_duplicates = True):
         return dat2.loc[keep]
 
 
-def rank_test(covariates, groups):
+def rank_test(covariates: pd.DataFrame, groups: np.ndarray) -> list:
     """
     Wilcoxon rank sum test for the distribution of treatment and control covariates.
 
@@ -432,7 +435,7 @@ def rank_test(covariates, groups):
         pvalues[j] = res.pvalue
     return pvalues
 
-def t_test(covariates, groups):
+def t_test(covariates: pd.DataFrame, groups: np.ndarray) -> list:
     """
     Two sample t test for the distribution of treatment and control covariates
 
