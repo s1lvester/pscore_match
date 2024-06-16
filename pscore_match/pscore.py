@@ -2,12 +2,10 @@
 This module contains a class to estimate propensity scores.
 """
 
-from __future__ import division
+from typing import Union
+
 import numpy as np
-import scipy
-from scipy.stats import binom, hypergeom, gaussian_kde
 import pandas as pd
-import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
 ################################################################################
@@ -17,16 +15,16 @@ import statsmodels.api as sm
 class PropensityScore(object):
     """
     Estimate the propensity score for each observation.
-    
-    The compute method uses a generalized linear model to regress treatment on covariates to estimate the propensity score. 
+
+    The compute method uses a generalized linear model to regress treatment on covariates to estimate the propensity score.
     This is not the only way to estimate the propensity score, but it is the most common.
     The two options allowed are logistic regression and probit regression.
     """
 
-    def __init__(self, treatment, covariates):
+    def __init__(self, treatment: Union[np.ndarray, pd.Series], covariates: pd.DataFrame) -> None:
         """
         Parameters
-        -----------        
+        -----------
         treatment : array-like
             binary treatment assignment
         covariates : pd.DataFrame
@@ -36,15 +34,20 @@ class PropensityScore(object):
             treated and covariates doesnt match'
         self.treatment = treatment
         self.covariates = covariates
-        
-    def compute(self, method='logistic'):
+
+    def compute(self, method: str = 'logistic') ->  np.ndarray:
         """
         Compute propensity score and measures of goodness-of-fit
-        
+
         Parameters
         ----------
         method : str
             Propensity score estimation method. Either 'logistic' or 'probit'
+
+        Returns
+        -------
+        propensity_score : np.ndarray
+            propensity score for each observation
         """
         predictors = sm.add_constant(self.covariates, prepend=False)
         if method == 'logistic':
